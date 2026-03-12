@@ -11,75 +11,76 @@ datasource db {
 // CREATE EXTENSION IF NOT EXISTS vector;
 
 model Profile {
-  id                       String    @id @default(uuid())
-  subscription_tier        String    @default("starter")
-  credit_balance           Int       @default(0)
-  current_streak_days      Int       @default(0)
-  total_words_written_manually Int   @default(0)
-  total_words_generated_ai Int       @default(0)
-  lifetime_credits_earned  Int       @default(0)
-  onboarding_completed     Boolean   @default(false)
-  default_style_id         String?
-  created_at               DateTime  @default(now())
-  updated_at               DateTime  @updatedAt
-  soft_deleted_at          DateTime?
+  id                           String    @id @default(uuid())
+  subscription_tier            String    @default("starter")
+  credit_balance               Int       @default(0)
+  current_streak_days          Int       @default(0)
+  total_words_written_manually Int       @default(0)
+  total_words_generated_ai     Int       @default(0)
+  lifetime_credits_earned      Int       @default(0)
+  onboarding_completed         Boolean   @default(false)
+  default_style_id             String?
+  created_at                   DateTime  @default(now())
+  updated_at                   DateTime  @updatedAt
+  soft_deleted_at              DateTime?
 
   // Relations
-  styles                   Style[]
-  universes                Universe[]
-  credit_transactions      CreditTransaction[]
-  jobs                     Job[]
-  books                    Book[]
-  chapters                 Chapter[]
-  style_training_jobs      StyleTrainingJob[]
-  continuity_issues        ContinuityIssue[]
+  styles                    Style[]
+  universes                 Universe[]
+  credit_transactions       CreditTransaction[]
+  jobs                      Job[]
+  books                     Book[]
+  chapters                  Chapter[]
+  style_training_jobs       StyleTrainingJob[]
+  continuity_issues         ContinuityIssue[]
   credit_earning_activities CreditEarningActivity[]
+  author_metrics            AuthorMetrics?
 
   @@index([subscription_tier])
 }
 
 model Job {
-  id                      String    @id @default(uuid())
-  owner_id                String
-  type                    String    // enum: chapter_generation, chapter_expansion, continuity_rewrite, style_training, audiobook_generation, tts_preview
-  status                  String    @default("queued") // queued, processing, completed, failed, cancelled
-  position_in_queue       Int?
-  progress_percent        Float?    @default(0)
+  id                       String    @id @default(uuid())
+  owner_id                 String
+  type                     String // enum: chapter_generation, chapter_expansion, continuity_rewrite, style_training, audiobook_generation, tts_preview
+  status                   String    @default("queued") // queued, processing, completed, failed, cancelled
+  position_in_queue        Int?
+  progress_percent         Float?    @default(0)
   progress_context_message String?
-  eta_seconds             Int?
-  queued_at               DateTime  @default(now())
-  started_at              DateTime?
-  finished_at             DateTime?
-  failed_at               DateTime?
-  error_message           String?
-  cost                    Int?
-  credits_refunded        Boolean   @default(false)
-  cancel_requested        Boolean   @default(false)
-  input_params            Json?
-  output_data             Json?
-  created_at              DateTime  @default(now())
-  updated_at              DateTime  @updatedAt
-  soft_deleted_at         DateTime?
+  eta_seconds              Int?
+  queued_at                DateTime  @default(now())
+  started_at               DateTime?
+  finished_at              DateTime?
+  failed_at                DateTime?
+  error_message            String?
+  cost                     Int?
+  credits_refunded         Boolean   @default(false)
+  cancel_requested         Boolean   @default(false)
+  input_params             Json?
+  output_data              Json?
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
+  soft_deleted_at          DateTime?
 
   // Relations
-  profile                 Profile   @relation(fields: [owner_id], references: [id])
-  style_training_job      StyleTrainingJob?
+  profile            Profile           @relation(fields: [owner_id], references: [id])
+  style_training_job StyleTrainingJob?
 
   @@index([owner_id, status])
   @@index([type, status])
 }
 
 model CreditTransaction {
-  id              String    @id @default(uuid())
-  profile_id      String
-  amount          Int       // positive = earned/purchased, negative = spent
-  source_type     String    // enum: purchase, daily_writing, community_feedback, streak_bonus, prompt_completion, job_spend, job_refund, style_training_bonus
-  source_id       String?   // nullable FK to job or activity
-  balance_after   Int?
-  created_at      DateTime  @default(now())
+  id            String   @id @default(uuid())
+  profile_id    String
+  amount        Int // positive = earned/purchased, negative = spent
+  source_type   String // enum: purchase, daily_writing, community_feedback, streak_bonus, prompt_completion, job_spend, job_refund, style_training_bonus
+  source_id     String? // nullable FK to job or activity
+  balance_after Int?
+  created_at    DateTime @default(now())
 
   // Relations
-  profile         Profile   @relation(fields: [profile_id], references: [id])
+  profile Profile @relation(fields: [profile_id], references: [id])
 
   @@index([profile_id, source_type])
 }
@@ -89,19 +90,19 @@ model Universe {
   owner_id          String
   title             String
   description       String?
-  global_lore       Json?     // world rules, magic systems, historical events
-  global_characters Json?     // character profiles, relationships, backstories
-  genre             String?   // enum handled in app code
-  tone              String?   // enum handled in app code
+  global_lore       Json? // world rules, magic systems, historical events
+  global_characters Json? // character profiles, relationships, backstories
+  genre             String? // enum handled in app code
+  tone              String? // enum handled in app code
   forked_from_id    String?
   is_public         Boolean   @default(false)
-  lore_embedding    Bytes?    // vector embedding from pgvector
+  lore_embedding    Bytes? // vector embedding from pgvector
   created_at        DateTime  @default(now())
   updated_at        DateTime  @updatedAt
   soft_deleted_at   DateTime?
 
   // Relations
-  profile           Profile   @relation(fields: [owner_id], references: [id])
+  profile           Profile           @relation(fields: [owner_id], references: [id])
   books             Book[]
   continuity_events ContinuityEvent[]
 
@@ -114,7 +115,7 @@ model Book {
   owner_id        String
   title           String
   target_length   Int?
-  genre           String?   // can differ from universe genre
+  genre           String? // can differ from universe genre
   style_id        String?
   status          String    @default("planning") // enum handled in app code
   outline         String?
@@ -124,9 +125,9 @@ model Book {
   soft_deleted_at DateTime?
 
   // Relations
-  universe        Universe  @relation(fields: [universe_id], references: [id])
-  profile         Profile   @relation(fields: [owner_id], references: [id])
-  chapters        Chapter[]
+  universe Universe  @relation(fields: [universe_id], references: [id])
+  profile  Profile   @relation(fields: [owner_id], references: [id])
+  chapters Chapter[]
 
   @@index([universe_id, status])
 }
@@ -138,11 +139,11 @@ model Chapter {
   index                   Int
   title                   String?
   content                 String?
-  generation_source       String?   // enum handled in app code
+  generation_source       String? // enum handled in app code
   word_count              Int       @default(0)
   ai_contribution_percent Float?    @default(0)
   timeline                Json?
-  content_embedding       Bytes?    // vector embedding from pgvector
+  content_embedding       Bytes? // vector embedding from pgvector
   draft_version           Int       @default(1)
   author_notes            String?
   created_at              DateTime  @default(now())
@@ -150,11 +151,11 @@ model Chapter {
   soft_deleted_at         DateTime?
 
   // Relations
-  book                    Book      @relation(fields: [book_id], references: [id])
-  profile                 Profile   @relation(fields: [owner_id], references: [id])
-  revisions               ChapterRevision[]
-  continuity_issues       ContinuityIssue[]
-  continuity_events       ContinuityEvent[]
+  book              Book              @relation(fields: [book_id], references: [id])
+  profile           Profile           @relation(fields: [owner_id], references: [id])
+  revisions         ChapterRevision[]
+  continuity_issues ContinuityIssue[]
+  continuity_events ContinuityEvent[]
 
   @@index([book_id, index])
 }
@@ -165,7 +166,7 @@ model Style {
   name                  String
   description           String?
   training_status       String    @default("pending") // enum handled in app code
-  training_ref          String[]  // array of R2 storage paths
+  training_ref          String[] // array of R2 storage paths
   training_completed_at DateTime?
   sentence_length_avg   Float?
   complexity_score      Float?
@@ -174,144 +175,144 @@ model Style {
   paragraph_length_avg  Float?
   favorite_phrases      String[]
   pacing_profile        Json?
-  pov_preference        String?   // enum handled in app code
-  tense_preference      String?   // enum handled in app code
-  style_embedding       Bytes?    // vector embedding from pgvector
+  pov_preference        String? // enum handled in app code
+  tense_preference      String? // enum handled in app code
+  style_embedding       Bytes? // vector embedding from pgvector
   genre_specialization  String?
   created_at            DateTime  @default(now())
   updated_at            DateTime  @updatedAt
   soft_deleted_at       DateTime?
 
   // Relations
-  profile               Profile   @relation(fields: [owner_id], references: [id])
+  profile Profile @relation(fields: [owner_id], references: [id])
 
   @@index([owner_id, name])
 }
 
 model StyleTrainingJob {
-  id                      String    @id @default(uuid())
-  job_id                  String    @unique
-  profile_id              String
-  style_id                String
-  sample_texts_analyzed   Int?
-  total_words_analyzed    Int?
-  patterns_extracted      Json?
-  training_quality_score  Float?
-  created_at              DateTime  @default(now())
-  updated_at              DateTime  @updatedAt
+  id                     String   @id @default(uuid())
+  job_id                 String   @unique
+  profile_id             String
+  style_id               String
+  sample_texts_analyzed  Int?
+  total_words_analyzed   Int?
+  patterns_extracted     Json?
+  training_quality_score Float?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
 
   // Relations
-  job                     Job       @relation(fields: [job_id], references: [id])
-  profile                 Profile   @relation(fields: [profile_id], references: [id])
+  job     Job     @relation(fields: [job_id], references: [id])
+  profile Profile @relation(fields: [profile_id], references: [id])
 
   @@index([profile_id, style_id])
 }
 
 model ContinuityEvent {
-  id              String    @id @default(uuid())
-  universe_id     String
-  character_name  String
-  chapter_id      String
-  event_type      String    // enum handled in app code
-  old_value       String?
-  new_value       String?
-  chapter_index   Int
-  detected_by     String?   // enum handled in app code
-  created_at      DateTime  @default(now())
+  id             String   @id @default(uuid())
+  universe_id    String
+  character_name String
+  chapter_id     String
+  event_type     String // enum handled in app code
+  old_value      String?
+  new_value      String?
+  chapter_index  Int
+  detected_by    String? // enum handled in app code
+  created_at     DateTime @default(now())
 
   // Relations
-  universe        Universe  @relation(fields: [universe_id], references: [id])
-  chapter         Chapter   @relation(fields: [chapter_id], references: [id])
+  universe Universe @relation(fields: [universe_id], references: [id])
+  chapter  Chapter  @relation(fields: [chapter_id], references: [id])
 
   @@index([universe_id, character_name])
 }
 
 model ContinuityIssue {
-  id                  String    @id @default(uuid())
+  id                  String   @id @default(uuid())
   chapter_id          String
   profile_id          String
   continuity_event_id String?
-  severity            String    // enum handled in app code
+  severity            String // enum handled in app code
   description         String
   suggested_fixes     String[]
-  auto_fix_attempts   Int       @default(0)
-  resolved            Boolean   @default(false)
-  resolved_by         String?   // enum handled in app code
+  auto_fix_attempts   Int      @default(0)
+  resolved            Boolean  @default(false)
+  resolved_by         String? // enum handled in app code
   fix_applied_text    String?
-  created_at          DateTime  @default(now())
-  updated_at          DateTime  @updatedAt
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 
   // Relations
-  chapter             Chapter   @relation(fields: [chapter_id], references: [id])
-  profile             Profile   @relation(fields: [profile_id], references: [id])
+  chapter Chapter @relation(fields: [chapter_id], references: [id])
+  profile Profile @relation(fields: [profile_id], references: [id])
 
   @@index([chapter_id, resolved])
 }
 
 model CreditEarningActivity {
-  id                    String    @id @default(uuid())
-  profile_id            String
-  activity_type         String    // unique identifier
-  title                 String
-  description           String?
-  icon_emoji            String?
-  credit_reward         Int
+  id                      String   @id @default(uuid())
+  profile_id              String
+  activity_type           String // unique identifier
+  title                   String
+  description             String?
+  icon_emoji              String?
+  credit_reward           Int
   requirement_description String?
-  requirement_threshold String?   // e.g., "500 words"
-  cooldown_hours        Int?
-  is_active             Boolean   @default(true)
-  created_at            DateTime  @default(now())
-  updated_at            DateTime  @updatedAt
+  requirement_threshold   String? // e.g., "500 words"
+  cooldown_hours          Int?
+  is_active               Boolean  @default(true)
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
 
   // Relations
-  profile               Profile   @relation(fields: [profile_id], references: [id])
+  profile Profile @relation(fields: [profile_id], references: [id])
 
   @@index([profile_id, activity_type])
 }
 
 model AuthorMetrics {
-  profile_id             String    @id
+  profile_id             String   @id
   writing_flow_score     Float?
   continuity_score       Float?
-  credit_health          String?   // enum handled in app code
-  words_today            Int       @default(0)
-  words_this_week        Int       @default(0)
-  words_manual_this_week Int       @default(0)
-  words_ai_this_week     Int       @default(0)
-  current_streak         Int       @default(0)
-  credits_earned_today   Int       @default(0)
-  ai_collaboration_ratio Float?    // manual vs AI-assisted word ratio
-  last_refreshed         DateTime  @default(now())
+  credit_health          String? // enum handled in app code
+  words_today            Int      @default(0)
+  words_this_week        Int      @default(0)
+  words_manual_this_week Int      @default(0)
+  words_ai_this_week     Int      @default(0)
+  current_streak         Int      @default(0)
+  credits_earned_today   Int      @default(0)
+  ai_collaboration_ratio Float? // manual vs AI-assisted word ratio
+  last_refreshed         DateTime @default(now())
 
   // Relations
-  profile                Profile   @relation(fields: [profile_id], references: [id])
+  profile Profile @relation(fields: [profile_id], references: [id])
 }
 
 model GenerationPrompt {
-  id                  String    @id @default(uuid())
-  prompt_type         String    // enum handled in app code
-  template            String    // with {{placeholders}}
-  style_adaptable     Boolean   @default(true)
-  is_system_default   Boolean   @default(false)
+  id                    String   @id @default(uuid())
+  prompt_type           String // enum handled in app code
+  template              String // with {{placeholders}}
+  style_adaptable       Boolean  @default(true)
+  is_system_default     Boolean  @default(false)
   created_by_profile_id String?
-  created_at          DateTime  @default(now())
-  updated_at          DateTime  @updatedAt
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
 
   @@index([prompt_type])
 }
 
 model ChapterRevision {
-  id            String    @id @default(uuid())
-  chapter_id    String
+  id             String   @id @default(uuid())
+  chapter_id     String
   version_number Int
-  content       String?
-  word_count    Int       @default(0)
-  revision_type String    // enum handled in app code
-  created_at    DateTime  @default(now())
-  created_by    String?   // enum handled in app code
+  content        String?
+  word_count     Int      @default(0)
+  revision_type  String // enum handled in app code
+  created_at     DateTime @default(now())
+  created_by     String? // enum handled in app code
 
   // Relations
-  chapter       Chapter   @relation(fields: [chapter_id], references: [id])
+  chapter Chapter @relation(fields: [chapter_id], references: [id])
 
   @@unique([chapter_id, version_number])
 }
