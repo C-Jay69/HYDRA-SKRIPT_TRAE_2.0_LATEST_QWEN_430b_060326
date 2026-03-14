@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/database/prismaClient';
 import { checkAndAwardCredits } from '@/lib/services/creditService';
 
@@ -8,9 +9,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
     const chapterId = params.id;
@@ -22,8 +24,8 @@ export async function POST(
       include: { book: { include: { universe: true } } }
     });
 
-    if (!chapter || chapter.book?.universe?.owner_id !== session.user.id) {
-      return NextResponse.json({ error: 'Chapter not found' }, { status: 404 });
+    if (!chapter || chapter.book?.universe?.owner_id !== user.id) {
+      return NextResponse.json({ message: 'Chapter not found' }, { status: 404 });
     }
 
     // Calculate word count
@@ -43,7 +45,7 @@ export async function POST(
     });
 
     // Check for daily writing credit eligibility
-    const earnedCredits = await checkAndAwardCredits(session.user.id, 'daily_writing');
+    const earnedCredits = await checkAndAwardCredits(user.id, 'daily_writing');
 
     return NextResponse.json({
       success: true,
@@ -52,6 +54,6 @@ export async function POST(
     });
   } catch (error) {
     console.error('Update chapter content error:', error);
-    return NextResponse.json({ error: 'Failed to update chapter content' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to update chapter content' }, { status: 500 });
   }
 }

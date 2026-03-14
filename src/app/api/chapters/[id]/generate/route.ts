@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/database/prismaClient';
 import JobLifecycleManager from '@/lib/bullmq/jobLifecycleManager';
 
@@ -8,9 +9,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
     const chapterId = params.id;
@@ -22,13 +24,13 @@ export async function POST(
       include: { book: { include: { universe: true } } }
     });
 
-    if (!chapter || chapter.book?.universe?.owner_id !== session.user.id) {
-      return NextResponse.json({ error: 'Chapter not found' }, { status: 404 });
+    if (!chapter || chapter.book?.universe?.owner_id !== user.id) {
+      return NextResponse.json({ message: 'Chapter not found' }, { status: 404 });
     }
 
     // Check credits
     const profile = await prisma.profile.findUnique({
-      where: { id: session.user.id }
+      where: { id: user.id }
     });
 
     const creditCost = 10 + Math.ceil(targetWordCount / 500);
@@ -42,7 +44,7 @@ export async function POST(
 
     // Create job
     const job = await JobLifecycleManager.createJob(
-      session.user.id,
+      user.id,
       'chapter_generation',
       {
         chapterId,
@@ -61,6 +63,6 @@ export async function POST(
     });
   } catch (error) {
     console.error('Chapter generation job creation error:', error);
-    return NextResponse.json({ error: 'Failed to start chapter generation' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to start chapter generation' }, { status: 500 });
   }
 }

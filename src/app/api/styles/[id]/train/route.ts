@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/database/prismaClient';
 import JobLifecycleManager from '@/lib/bullmq/jobLifecycleManager';
 
@@ -8,9 +9,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
     const styleId = params.id;
@@ -21,13 +23,13 @@ export async function POST(
       where: { id: styleId }
     });
 
-    if (!style || style.owner_id !== session.user.id) {
-      return NextResponse.json({ error: 'Style not found' }, { status: 404 });
+    if (!style || style.owner_id !== user.id) {
+      return NextResponse.json({ message: 'Style not found' }, { status: 404 });
     }
 
     // Create job
     const job = await JobLifecycleManager.createJob(
-      session.user.id,
+      user.id,
       'style_training',
       {
         styleId,
@@ -43,6 +45,6 @@ export async function POST(
     });
   } catch (error) {
     console.error('Style training job creation error:', error);
-    return NextResponse.json({ error: 'Failed to start style training' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to start style training' }, { status: 500 });
   }
 }

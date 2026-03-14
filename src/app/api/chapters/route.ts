@@ -1,38 +1,41 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/database/prismaClient';
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const bookId = searchParams.get('bookId');
 
     if (!bookId) {
-      return NextResponse.json({ error: 'bookId is required' }, { status: 400 });
+      return NextResponse.json({ message: 'bookId is required' }, { status: 400 });
     }
 
     const chapters = await prisma.chapter.findMany({
-      where: { book_id: bookId, owner_id: session.user.id },
+      where: { book_id: bookId, owner_id: user.id },
       orderBy: { index: 'asc' }
     });
 
     return NextResponse.json(chapters);
   } catch (error) {
     console.error('Get chapters error:', error);
-    return NextResponse.json({ error: 'Failed to fetch chapters' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to fetch chapters' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
     const { bookId, title, content } = await request.json();
@@ -47,7 +50,7 @@ export async function POST(request: Request) {
     const chapter = await prisma.chapter.create({
       data: {
         book_id: bookId,
-        owner_id: session.user.id,
+        owner_id: user.id,
         index: nextIndex,
         title,
         content,
@@ -59,6 +62,6 @@ export async function POST(request: Request) {
     return NextResponse.json(chapter);
   } catch (error) {
     console.error('Create chapter error:', error);
-    return NextResponse.json({ error: 'Failed to create chapter' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to create chapter' }, { status: 500 });
   }
 }

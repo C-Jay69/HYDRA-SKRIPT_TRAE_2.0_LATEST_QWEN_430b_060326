@@ -1,7 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  // Relaxed checks for faster builds
+  // Keep native-only packages out of the webpack bundle
+  serverExternalPackages: [
+    'onnxruntime-node',
+    '@xenova/transformers',
+    'sharp',
+    'bullmq',
+    'ioredis',
+  ],
   eslint: {
     ignoreDuringBuilds: true,
   },

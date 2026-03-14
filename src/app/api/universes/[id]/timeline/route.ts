@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/database/prismaClient';
 
 export async function GET(
@@ -7,9 +8,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
     const universeId = params.id;
@@ -21,8 +23,8 @@ export async function GET(
       where: { id: universeId }
     });
 
-    if (!universe || universe.owner_id !== session.user.id) {
-      return NextResponse.json({ error: 'Universe not found' }, { status: 404 });
+    if (!universe || universe.owner_id !== user.id) {
+      return NextResponse.json({ message: 'Universe not found' }, { status: 404 });
     }
 
     // Get continuity events
@@ -72,6 +74,6 @@ export async function GET(
     });
   } catch (error) {
     console.error('Get timeline error:', error);
-    return NextResponse.json({ error: 'Failed to fetch timeline' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to fetch timeline' }, { status: 500 });
   }
 }

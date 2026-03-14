@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/database/prismaClient';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
     const { styleName, styleDescription } = await request.json();
@@ -15,7 +17,7 @@ export async function POST(request: Request) {
     // Create style record
     const style = await prisma.style.create({
       data: {
-        owner_id: session.user.id,
+        owner_id: user.id,
         name: styleName,
         description: styleDescription,
         training_status: 'pending'
@@ -35,6 +37,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('Create style error:', error);
-    return NextResponse.json({ error: 'Failed to create style' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to create style' }, { status: 500 });
   }
 }

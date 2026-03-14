@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/database/prismaClient';
 
 export async function GET() {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
     // Get latest metrics from AuthorMetrics table
     const metrics = await prisma.authorMetrics.findUnique({
-      where: { profile_id: session.user.id }
+      where: { profile_id: user.id }
     });
 
     if (!metrics) {
@@ -23,6 +25,6 @@ export async function GET() {
     return NextResponse.json(metrics);
   } catch (error) {
     console.error('Get metrics error:', error);
-    return NextResponse.json({ error: 'Failed to fetch metrics' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to fetch metrics' }, { status: 500 });
   }
 }

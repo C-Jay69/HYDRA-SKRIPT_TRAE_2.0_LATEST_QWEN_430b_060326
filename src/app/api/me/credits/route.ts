@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { getCreditContext } from '@/lib/services/creditService';
 
 export async function GET() {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
-    const context = await getCreditContext(session.user.id);
+    const context = await getCreditContext(user.id);
 
     // Add estimated costs for common operations
     const extendedContext = {
@@ -25,6 +27,6 @@ export async function GET() {
     return NextResponse.json(extendedContext);
   } catch (error) {
     console.error('Get credit context error:', error);
-    return NextResponse.json({ error: 'Failed to fetch credit context' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to fetch credit context' }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/database/prismaClient';
 import JobLifecycleManager from '@/lib/bullmq/jobLifecycleManager';
 
@@ -8,9 +9,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
     const chapterId = params.id;
@@ -22,13 +24,13 @@ export async function POST(
       include: { book: { include: { universe: true } } }
     });
 
-    if (!chapter || chapter.book?.universe?.owner_id !== session.user.id) {
-      return NextResponse.json({ error: 'Chapter not found' }, { status: 404 });
+    if (!chapter || chapter.book?.universe?.owner_id !== user.id) {
+      return NextResponse.json({ message: 'Chapter not found' }, { status: 404 });
     }
 
     // Create job for regeneration
     const job = await JobLifecycleManager.createJob(
-      session.user.id,
+      user.id,
       'chapter_generation',
       {
         chapterId,
@@ -47,6 +49,6 @@ export async function POST(
     });
   } catch (error) {
     console.error('Chapter regeneration job creation error:', error);
-    return NextResponse.json({ error: 'Failed to start chapter regeneration' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to start chapter regeneration' }, { status: 500 });
   }
 }

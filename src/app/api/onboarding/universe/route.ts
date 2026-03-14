@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/database/prismaClient';
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
     const { title, description, genre, tone } = await request.json();
@@ -14,7 +16,7 @@ export async function POST(request: Request) {
     // Create universe
     const universe = await prisma.universe.create({
       data: {
-        owner_id: session.user.id,
+        owner_id: user.id,
         title,
         description,
         genre,
@@ -27,6 +29,6 @@ export async function POST(request: Request) {
     return NextResponse.json(universe);
   } catch (error) {
     console.error('Create universe error:', error);
-    return NextResponse.json({ error: 'Failed to create universe' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to create universe' }, { status: 500 });
   }
 }

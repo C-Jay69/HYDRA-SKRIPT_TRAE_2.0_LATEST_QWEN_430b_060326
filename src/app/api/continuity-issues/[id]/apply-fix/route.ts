@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { applyContinuityFix } from '@/lib/services/continuityGuardService';
 
 export async function POST(
@@ -7,9 +8,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ message: 'Please sign in to continue' }, { status: 401 });
     }
 
     const issueId = params.id;
@@ -17,7 +19,7 @@ export async function POST(
 
     // Apply the fix
     const result = await applyContinuityFix(
-      session.user.id,
+      user.id,
       issueId,
       selectedFix
     );
@@ -25,6 +27,6 @@ export async function POST(
     return NextResponse.json(result);
   } catch (error) {
     console.error('Apply continuity fix error:', error);
-    return NextResponse.json({ error: 'Failed to apply continuity fix' }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to apply continuity fix' }, { status: 500 });
   }
 }
